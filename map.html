@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Dom版地图设计</title>
+	<style type="text/css">
+		* {
+			margin: 0;
+			padding: 0;
+		}
+		body {
+		}
+		.container {
+			width:1200px;
+			height: 600px;
+			margin: 5px auto;
+			background: black;
+			overflow: hidden;
+			position: relative;
+		}
+		.switch-block {
+			position: fixed;
+			top: 10px;
+			left: 10px;
+			margin: 5px auto;
+			width: 150px;
+		}
+		.switch-block img {
+			width: 60px;
+			height: 60px;
+			padding: 3px;
+			cursor: pointer;
+		}
+
+		.map-block-active {
+			opacity: 0.8;
+		}
+
+		.switch-block .map-switch-block-active {
+			border: 3px solid red;
+		}
+
+		.map-design {
+			width: 1200px;
+			margin: 0 auto;
+		}
+
+
+		.form-group {
+			margin:10px 0;
+		}
+		.form-group .label-control {
+			text-align: right;
+			display: inline-block;
+			width:50px;
+		}
+		.form-group button {
+			margin-left: 13px;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		
+	</div>
+
+	<div class="switch-block">
+		<img src="./images/map/select.png" alt="选择" data-type="select"/>
+		<img src="./images/map/delete.png" alt="删除" data-type="delete"/>
+		<img class="map-switch-block-active" src="./images/map/grass.png" alt="草块" data-type="grass"/>
+		<img src="./images/map/iron.gif" alt="铁块" data-type="iron"/>
+		<img src="./images/map/wall.gif" alt="墙块" data-type="wall"/>
+		<img src="./images/map/water.gif" alt="水块" data-type="water"/>
+		<img src="./images/map/base.png" alt="基地" data-type="base"/>
+		<img src="./images/map/enemy.gif" alt="敌人" data-type="enemy"/>
+	</div>
+	<div class="map-design">
+		<div class="form-group">
+			<label class="label-control">层级:</label>
+			<input id="zIndex" type="number" placeholder="层级" name="zIndex" data-attr="zIndex" data-company="" />
+			<label class="label-control">位置X:</label>
+			<input id="posX" type="number" placeholder="x" name="left" data-attr="x" data-company="px"/>
+			<label class="label-control">位置Y:</label>
+			<input id="posY" type="number" placeholder="y" name="top" data-attr="y" data-company="px"/>
+			<button onclick="generateMap()">生成地图(Json格式)</button>
+			<button onclick="readJsonMap()">读取地图(Json格式)</button>
+		</div>
+		<div class="form-group">
+			<textarea id="gameMapJson" cols="60" rows="5"></textarea>
+			<label>
+				<input type="checkbox" onclick="forMatJson(this)">格式化显示
+			</label>
+		</div>
+	</div>
+	<script type="text/javascript" src="./scripts/helper.js"></script>
+	<script type="text/javascript" src="./scripts/game.js"></script>
+	<script type="text/javascript" src="./scripts/map.js"></script>
+	<script type="text/javascript" src="./scripts/map-design.js"></script>
+
+	<script type="text/javascript">
+		var gameMapDesign = GameMapDesign.init({
+			container: document.querySelector(".container"),
+			defaultBlockType: 'grass',
+			switchBlocks: document.querySelector(".switch-block").querySelectorAll('img'),
+
+			designInput: {
+				zIndex: document.querySelector('#zIndex'),
+				posX: document.querySelector('#posX'),
+				posY: document.querySelector('#posY'),
+			},
+			switchBlockBtnKeyBind (keyCode,commit) {
+				let type = "";
+				switch (keyCode) {
+						case 49:
+						type = 'grass';
+					break;
+						case 50:
+						type = 'iron';
+					break;
+						case 51:
+						type = 'wall';
+					break;
+						case 52:
+						type = 'water';
+					break;
+						case 53:
+						type = 'base';
+					break;
+						case 54:
+						type = 'enemy';
+					break;
+				}
+				type && commit(type);
+			}
+		});
+
+		function generateMap () {
+			document.querySelector("#gameMapJson").value = JSON.stringify(gameMapDesign.generateMap());
+		}
+
+		function readJsonMap () {
+			gameMapDesign.readJsonMap(document.querySelector("#gameMapJson").value);
+		}
+
+		function forMatJson (elemt) {
+			let content = document.querySelector("#gameMapJson").value;
+			document.querySelector("#gameMapJson").value = elemt.checked ? JSON.stringify(
+				JSON.parse(content),null,4
+			) : JSON.stringify(
+				JSON.parse(content)
+			);
+		}
+	</script>
+</body>
+</html>

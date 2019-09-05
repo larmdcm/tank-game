@@ -7,9 +7,28 @@ class GameMap
 		this.container = options.container;
 	}
 
-	readMap (jsonMap)
+	readMap (jsonMap,callback)
 	{
-		
+		if (isStr(jsonMap)) {
+			jsonMap = JSON.parse(jsonMap);
+		}
+		arrSlice(jsonMap).forEach((block,index) => {
+			let gameBlock = GameMapBlock.create({
+				blockType: block.blockType
+			})
+			, x = block.x
+			, y = block.y;
+
+			if (block.blockType == 'grass') {
+				gameBlock.setZindex(gameBlock.zIndex + 2);
+			} else {
+				gameBlock.setZindex(gameBlock.zIndex + 1);
+			}
+			gameBlock.setIdent(index).setPos(new Position(x,y)).move()
+					 .show(this.container);
+
+			callback && callback(gameBlock);
+		});
 	}
 
 	static init (options)

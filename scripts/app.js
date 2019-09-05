@@ -2,8 +2,9 @@
 
 class Game
 {
-	playerIdentName = 'player';
-	enemyIdentName  = 'enemy';
+	playerIdentName   = 'player';
+	enemyIdentName    = 'enemy';
+	buildingIdentName = 'building';
 
 	static start (options)
 	{
@@ -82,6 +83,40 @@ class Game
 							});
 					});
 				});
+		       // 遍历建筑物检测
+		      	arrSlice(this.getIdentList(this.buildingIdentName)).forEach((buildingIdent,index) => {
+		      		let result = Collider.rectangularDetection(ident,buildingIdent);
+		      		if (result.check) {
+		      			let checkObject = result.objectOne.object
+		      			   , pos = checkObject.getPos();
+  						switch (checkObject.direction) {
+								case TANK_DIRECTION_UP:
+								pos.y += checkObject.speed;
+							break;
+								case TANK_DIRECTION_DOWN:
+								pos.y -= checkObject.speed;
+							break;
+								case TANK_DIRECTION_LEFT:
+								pos.x += checkObject.speed;
+							break;
+								case TANK_DIRECTION_RIGHT:
+								pos.x -= checkObject.speed;
+							break;
+						}
+						if (ident.includes('bullet')) {
+				      		Collider.remove(buildingIdent);
+							this.removeIdentList(this.buildingIdentName,index);
+							let objectTwo = result.objectTwo;
+							result.objectOne.remove();
+							// 可击破物体
+							if (objectTwo.object.blockType == 'wall') {
+								objectTwo.remove();
+							}
+						} else {
+							checkObject.setPos(pos).move();
+						}
+		      		}
+		      	});
 			}
 		});
 	}
@@ -89,43 +124,59 @@ class Game
 	run () 
 	{
 		// 初始化地图
-		
-		let playerDirections = {};
-		playerDirections[TANK_KEY_CODE_W] = TANK_DIRECTION_UP;
-		playerDirections[TANK_KEY_CODE_S] = TANK_DIRECTION_DOWN;
-		playerDirections[TANK_KEY_CODE_A] = TANK_DIRECTION_LEFT;
-		playerDirections[TANK_KEY_CODE_D] = TANK_DIRECTION_RIGHT;
+		HttpRequest.get("./map/map.json").then((jsonMap) => {
+			let gameApp = this;
+			
+			GameMap.init({
+				container: this.getContainer()
+			}).readMap(jsonMap,function (block) {
+				if (['iron','wall'].includes(block.blockType)) {
+					gameApp.addIdentList(gameApp.buildingIdentName,block.ident);
+					Collider.add(block.ident,new CollisionObject({
+						object: block,
+						elemt: block.block
+					}));
+				}
+			});
 
-		let player = new PlayerTank({
-			directionImage: [
-				'./images/up.gif','./images/down.gif','./images/left.gif','./images/right.gif'
-			],
-			directions: playerDirections,
-			initPos: new Position(392,519),
-			ident: this.playerIdentName + '-tank'
-		});
-		this.addIdentList(this.playerIdentName,player.ident);
-		player.draw();
-		Collider.add(player.ident,new CollisionObject({
-			object: player,
-			elemt: player.tank
-		}));
+			let playerDirections = {};
+			playerDirections[TANK_KEY_CODE_W] = TANK_DIRECTION_UP;
+			playerDirections[TANK_KEY_CODE_S] = TANK_DIRECTION_DOWN;
+			playerDirections[TANK_KEY_CODE_A] = TANK_DIRECTION_LEFT;
+			playerDirections[TANK_KEY_CODE_D] = TANK_DIRECTION_RIGHT;
 
-		for (let i = 1; i <= 2; i++) {
-			let enemy = new EnemyTank({
+			let player = new PlayerTank({
 				directionImage: [
 					'./images/up.gif','./images/down.gif','./images/left.gif','./images/right.gif'
 				],
-				initPos: new Position(random(100,1000),random(100,600)),
-				ident: this.enemyIdentName + "-tank-" + i
+				directions: playerDirections,
+				initPos: new Position(392,519),
+				ident: this.playerIdentName + '-tank'
 			});
-			this.addIdentList(this.enemyIdentName,enemy.ident);
-			enemy.draw();
-			Collider.add(enemy.ident,new CollisionObject({
-				object: enemy,
-				elemt: enemy.tank
+			this.addIdentList(this.playerIdentName,player.ident);
+			player.draw();
+			Collider.add(player.ident,new CollisionObject({
+				object: player,
+				elemt: player.tank
 			}));
-		}
+
+			for (let i = 1; i <= 0; i++) {
+				let enemy = new EnemyTank({
+					directionImage: [
+						'./images/up.gif','./images/down.gif','./images/left.gif','./images/right.gif'
+					],
+					initPos: new Position(random(100,1000),random(100,600)),
+					ident: this.enemyIdentName + "-tank-" + i
+				});
+				this.addIdentList(this.enemyIdentName,enemy.ident);
+				enemy.draw();
+				Collider.add(enemy.ident,new CollisionObject({
+					object: enemy,
+					elemt: enemy.tank
+				}));
+			}
+		});
+
 	}
 
 	getContainer ()
@@ -199,9 +250,13 @@ class BaseTank extends Position
 			this.y = this.containerHeight - this.tank.clientHeight;
 		}
 
+		this.move();
+	}
+
+	move ()
+	{
 		this.tank.style.left = this.x + 'px';
 		this.tank.style.top  = this.y + 'px';
-
 	}
 
 	launch ()
@@ -295,8 +350,9 @@ class EnemyTank extends BaseTank
 class Bullet extends Position
 {
 	speed = 1;
-	width = 20;
-	height = 20;
+	width = 15;
+	height = 15;
+	isCheck = true;
 
 	constructor (container,ident)
 	{
@@ -334,10 +390,16 @@ class Bullet extends Position
 			this.tankmissile.style.left = pos.x + 'px';
 			this.tankmissile.style.top  = pos.y + 'px';
 			// 碰撞检测
-			GameEvent.trigger('collision-check',this.ident);
+			this.isCheck && GameEvent.trigger('collision-check',this.ident);
 			requestAnimationFrame(move);
 		};
 		move();
+	}
+
+	remove ()
+	{
+		this.isCheck = false;
+		this.tankmissile.parentNode && this.tankmissile.parentNode.removeChild(this.tankmissile);
 	}
 
 	create (direction)

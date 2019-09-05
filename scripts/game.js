@@ -284,6 +284,96 @@ class Animation
 	}
 }
 
+class HttpRequest
+{
+	constructor (options)
+	{
+		this.options = options;
+	}
+
+	send ()
+	{
+		let data = new FormData();
+		for (let k in this.options.data) {
+			data.append(k,options.data[k]);
+		}
+		this.xhr = new XMLHttpRequest();
+
+		this.xhr.open(this.options.type,this.options.url,this.options.async);
+
+		if (this.options.type == 'POST') {
+			 this.xhr.setRequestHeader('Content-Type', "application/x-www-form-urlencoded; charset=UTF-8");
+		}
+
+		let promise = new Promise((resolve,reject) => {
+			let self = this;
+			this.xhr.onreadystatechange = function () {
+				let result;
+				if (self.xhr.readyState === 4) {
+					if(self.xhr.status !== 500) {
+				        switch (self.options.dataType) {
+	                        case 'JSON':
+	                            result = JSON.parse(self.xhr.responseText);
+	                            break;
+	                        case 'script':
+	                            eval(self.xhr.responseText);
+	                            result = self.xhr.responseText;
+	                            break;
+	                        case 'style':
+	                            result = self.xhr.responseText;
+	                            var style = document.createElement("style");
+	                            style.innerHTML = result;
+	                            document.getElementsByTagName('head')[0].appendChild(style);
+	                            break;
+	                        default:
+	                            if (self.xhr.getResponseHeader('content-type') && self.xhr.getResponseHeader('content-type').indexOf("application/json") != -1) {
+	                              result = JSON.parse(self.xhr.responseText);
+	                            } else {
+	                              result = self.xhr.responseText;
+	                            }
+	                            break;
+	                    }
+						resolve(result);
+					} else {
+						reject(self.xhr);
+					}
+				}
+			};	
+		});
+
+		this.xhr.send(data);
+		return promise;
+		
+	}
+
+	static create (options)
+	{
+		return new HttpRequest(options).send();
+	}
+
+	static post (url = "",data = {},dataType = 'JSON',async = true)
+	{
+		return HttpRequest.create({
+			url: url,
+			type: "POST",
+			data: data,
+			async: async,
+			dataType: "JSON"
+		});
+	}
+
+	static get (url = "",data = {},dataType = 'JSON',async = true)
+	{
+		return HttpRequest.create({
+			url: url,
+			type: "GET",
+			data: data,
+			async: async,
+			dataType: "JSON"
+		});
+	}
+}
+
 class Collider
 {
 	static add (ident,object)
@@ -305,6 +395,7 @@ class Collider
 		  , objectTwo = Collider.getObject(objectIdentTwo)
 		  , check     = false;
 
+
 		if (objectOne && objectTwo) {
 			let x1 = objectOne.object.x
 			  , w1 = objectOne.object.width
@@ -324,7 +415,6 @@ class Collider
                 ( ( x1 + w1 ) < x2 ) ||
                 ( x1 > ( x2 + w2 ) )
             );
-
 			// if (objectOne.object.direction == TANK_DIRECTION_LEFT || objectOne.object.direction == TANK_DIRECTION_RIGHT) {
 			// 	check = Math.abs(((x1 + w1 / 2) - (x2 + w2 / 2))) < Math.abs((w1 + w2) / 2);
 			// }
@@ -365,6 +455,10 @@ class CollisionObject
 
 	remove ()
 	{
-		this.elemt.parentNode.removeChild(this.elemt);
+		if (isFunc(this.object.remove)) {
+			this.object.remove();
+		} else {
+			this.elemt.parentNode && this.elemt.parentNode.removeChild(this.elemt);
+		}
 	}
 }

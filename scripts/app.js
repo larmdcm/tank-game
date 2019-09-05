@@ -34,9 +34,14 @@ class Game
 		}
 		return this.identList[name];
 	}
-	removeIdentList (name,index)
+	removeIdentList (name,ident)
 	{
-		this.identList[name].splice(index,1);
+		for (var i in this.identList[name]) {
+			if (this.identList[name][i] == ident) {
+				this.identList[name].slice(i,1);
+				break;
+			}
+		}
 	}
 
 	constructor (options)
@@ -55,87 +60,46 @@ class Game
 		GameEvent.on('collision-check',(ident) => {
 			// 玩家
 			if (ident.includes(this.playerIdentName)) {
-				// 遍历敌人列表检测
-				[].slice.call(this.getIdentList(this.enemyIdentName)).forEach((enemyIdnet,index) => {
-					let result = Collider.rectangularDetection(ident,enemyIdnet);
-						result.check && result.destroy(2,() => {
-							result.objectOne.remove();
-							result.objectTwo.remove();
-							this.removeIdentList(this.enemyIdentName,index);
-							Animation.create({
-								images () {
-									let images = [];
-									for (let i = 1; i <= 8; i++) {
-										images.push("./images/animation/" + "blast" + i + ".gif");
-									}	
-									return images;	
-								},
-								beforeFn () {
-									Voice.create('./voice/blast.wav').play(function () {
-										this.destroy();
-									});
-								},
-								playPosition () {
-									return new Position(result.objectTwo.object.x - 35,result.objectTwo.object.y - 35);
-								}
-							}).play(function () {
-								this.destroy();
-							});
-					});
-				});
-		       // 遍历建筑物检测
-		      	arrSlice(this.getIdentList(this.buildingIdentName)).forEach((buildingIdent,index) => {
-		      		let result = Collider.rectangularDetection(ident,buildingIdent);
-		      		if (result.check) {
-		      			let checkObject = result.objectOne.object
-		      			   , pos = checkObject.getPos();
-  						switch (checkObject.direction) {
-								case TANK_DIRECTION_UP:
-								pos.y += checkObject.speed;
-							break;
-								case TANK_DIRECTION_DOWN:
-								pos.y -= checkObject.speed;
-							break;
-								case TANK_DIRECTION_LEFT:
-								pos.x += checkObject.speed;
-							break;
-								case TANK_DIRECTION_RIGHT:
-								pos.x -= checkObject.speed;
-							break;
-						}
-						if (ident.includes('bullet')) {
-				      		Collider.remove(buildingIdent);
-							this.removeIdentList(this.buildingIdentName,index);
-							let objectTwo = result.objectTwo;
-							result.objectOne.remove();
-							// 可击破物体
-							if (objectTwo.object.blockType == 'wall') {
-								objectTwo.remove();
-							}
-						} else {
-							checkObject.setPos(pos).move();
-						}
-		      		}
-		      	});
+				colliderCheck.call(this,ident,'enemyIdentName');
+			} else if (ident.includes(this.enemyIdentName)) {
+				colliderCheck.call(this,ident,'playerIdentName');
 			}
 		});
 	}
 
 	run () 
 	{
-		// 初始化地图
+		// 加载地图
 		HttpRequest.get("./map/map.json").then((jsonMap) => {
 			let gameApp = this;
-			
+			// 初始化地图
 			GameMap.init({
 				container: this.getContainer()
 			}).readMap(jsonMap,function (block) {
+				// 墙，铁建筑
 				if (['iron','wall'].includes(block.blockType)) {
 					gameApp.addIdentList(gameApp.buildingIdentName,block.ident);
 					Collider.add(block.ident,new CollisionObject({
 						object: block,
 						elemt: block.block
 					}));
+				}
+				// 敌人
+				if (block.blockType == 'enemy') {
+					let enemy = new EnemyTank({
+						directionImage: [
+							'./images/enemy2U.gif','./images/enemy2D.gif','./images/enemy2L.gif','./images/enemy2R.gif'
+						],
+						initPos: new Position(block.x,block.y),
+						ident: gameApp.enemyIdentName + "-tank-" + block.ident
+					});
+					gameApp.addIdentList(gameApp.enemyIdentName,enemy.ident);
+					enemy.draw();
+					Collider.add(enemy.ident,new CollisionObject({
+						object: enemy,
+						elemt: enemy.tank
+					}));
+					block.remove();
 				}
 			});
 
@@ -340,10 +304,23 @@ class PlayerTank extends BaseTank
 
 class EnemyTank extends BaseTank
 {
+	direction = TANK_DIRECTION_DOWN;
+
 	constructor (options)
 	{
 		super(options);
 		this.tank.className = 'enemy-tank';
+
+		let move = () => {
+			let direction = random(0,3)
+			 , isAttack   = random(0,20);
+			this.direction = direction;
+			super.draw();
+			[3,6,9].includes(isAttack) && super.launch();
+			GameEvent.trigger('collision-check',this.ident);
+		};
+
+		setInterval(move,300);
 	}
 }
 

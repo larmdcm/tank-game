@@ -415,13 +415,6 @@ class Collider
                 ( ( x1 + w1 ) < x2 ) ||
                 ( x1 > ( x2 + w2 ) )
             );
-			// if (objectOne.object.direction == TANK_DIRECTION_LEFT || objectOne.object.direction == TANK_DIRECTION_RIGHT) {
-			// 	check = Math.abs(((x1 + w1 / 2) - (x2 + w2 / 2))) < Math.abs((w1 + w2) / 2);
-			// }
-			// if (objectOne.object.direction == TANK_DIRECTION_UP || objectOne.object.direction == TANK_DIRECTION_DOWN) {
-			// 	check = Math.abs(((y1 + h1 / 2) - (y2 + h2 / 2))) < Math.abs((h1 + h2) / 2);
-			// }
-			
 
 		}
 
